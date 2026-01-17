@@ -1049,16 +1049,19 @@ const validateCronExpression = (expression) => {
   if (!expression) return { valid: false, message: "Cron表达式不能为空" };
 
   const cronParts = expression.split(" ").filter(Boolean);
-  if (cronParts.length !== 5) {
-    return { valid: false, message: "Cron表达式必须包含5个字段：分 时 日 月 周" };
+  // 支持5个或6个字段的cron表达式（第6个字段通常是秒或年，这里忽略）
+  if (cronParts.length < 5 || cronParts.length > 6) {
+    return { valid: false, message: "Cron表达式必须包含5个或6个字段：[秒] 分 时 日 月 周" };
   }
 
-  const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
+  // 如果是6个字段，忽略第1个字段（秒），只使用后5个字段
+  const effectiveParts = cronParts.length === 6 ? cronParts.slice(1) : cronParts;
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = effectiveParts;
 
   // 定义通用的cron字段验证函数，不使用正则表达式
   const validateCronField = (field, min, max, fieldName) => {
-    // 处理星号
-    if (field === '*') {
+    // 处理星号和问号（? 相当于 *，用于表示不指定）
+    if (field === '*' || field === '?') {
       return { valid: true };
     }
     
@@ -1213,7 +1216,9 @@ const parseCronExpression = (expression) => {
   
   // Parse the expression and calculate next runs
   const cronParts = expression.split(" ").filter(Boolean);
-  const [minuteField, hourField, dayOfMonthField, monthField, dayOfWeekField] = cronParts;
+  // 如果是6个字段，忽略第1个字段（秒），只使用后5个字段
+  const effectiveParts = cronParts.length === 6 ? cronParts.slice(1) : cronParts;
+  const [minuteField, hourField, dayOfMonthField, monthField, dayOfWeekField] = effectiveParts;
   
   // Calculate next 5 execution times
   const nextRuns = calculateNextRuns(minuteField, hourField, dayOfMonthField, monthField, dayOfWeekField, 5);
@@ -1827,8 +1832,8 @@ const parseCronField = (field, min, max) => {
     return Array.from(values);
   }
 
-  // 处理星号
-  if (field === '*') {
+  // 处理星号和问号（? 相当于 *，用于表示不指定）
+  if (field === '*' || field === '?') {
     for (let i = min; i <= max; i++) {
       values.add(i);
     }
